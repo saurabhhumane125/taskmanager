@@ -12,8 +12,8 @@ const schema = new mongoose.Schema({
 }, { timestamps: true, versionKey: false, toJSON: { transform: (_doc, ret) => { ret.id = String(ret._id); delete ret._id; return ret; } } });
 
 export async function createMongoStore(uri) {
-  await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
-  const Task = mongoose.model('Task', schema);
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000, maxPoolSize: 5 });
+  const Task = mongoose.models.Task || mongoose.model('Task', schema);
   return {
     mode: 'mongodb',
     list: () => Task.find().sort({ createdAt: -1 }),
