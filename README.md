@@ -1,6 +1,18 @@
 # Taskflow
 
-A simple task manager built with React, Express, Node.js, and optional MongoDB. Add, edit, complete, search, sort, and delete tasks in a responsive interface.
+A task manager built with React, Express, Node.js, and optional MongoDB. Sign up or log in to your own workspace, then add, edit, complete, search, sort, and delete your tasks.
+
+## Accounts and private workspaces
+
+Create an account with your name, email, and a password of 8–128 characters. Signup signs you in immediately. Log out using the icon beside your name in the sidebar. Sessions last up to seven days and are revoked on logout. Your password is stored as a salted scrypt hash, and the session token is kept in an HttpOnly cookie (Secure on Vercel/production). Authentication attempt counters are stored in the database so they also work across Vercel instances.
+
+Every task belongs to a user. The backend checks ownership on listing, editing, completing, and deleting tasks. Supplying another user's ID in the URL, query, or JSON does not grant access. Tasks created before accounts were introduced have no owner; they remain stored and are hidden from new accounts rather than being assigned to the first signup.
+
+Atlas collections now include `users`, `sessions`, `authattempts`, and `tasks`. The `userId` field in each new task identifies its account. Local demo storage keeps the same information in `data/tasks.json`; old array-form data is upgraded when written. Email verification and password-reset email are outside this version's scope.
+
+No additional paid service or authentication secret is required on Vercel. Keep using the existing `MONGODB_URI`. After deployment, create a new app account; your Atlas database user is a separate server connection credential and is not an app login.
+
+Auth endpoints: POST `/api/auth/signup`, POST `/api/auth/login`, GET `/api/auth/me`, and POST `/api/auth/logout`. All task endpoints require the session cookie. For direct API requests, include `X-Taskflow-Request: 1` on POST/PATCH/DELETE, and preserve cookies from login.
 
 ## Run locally
 
@@ -42,7 +54,7 @@ After setting `.env`, verify the real database connection:
 npm.cmd run db:check
 ```
 
-`npm.cmd run test:mongodb` verifies the API against your configured real database. It creates one temporary test task and removes it afterward, leaving existing tasks untouched.
+`npm.cmd run test:mongodb` verifies account isolation and task operations against your configured real database. It creates temporary accounts and a task and removes them afterward, leaving existing accounts and tasks untouched. Authentication rate-limit counters expire automatically.
 
 Restart `npm.cmd run dev` after changing `.env` (Node watch mode does not watch this file). Open `/api/health` to confirm `"storage":"mongodb"`. Add a task and refresh to demonstrate persistence. In MongoDB Compass, connect to `mongodb://127.0.0.1:27017` and open `taskflow` → `tasks` to view saved records after creating a task. Compass is optional and installed separately.
 
@@ -83,14 +95,16 @@ npm test
 npm run build
 ```
 
-API tests cover task creation, validation, updates, deletion, filtering fields, missing records, and file persistence. MongoDB requires a real connection for integration verification.
+API tests cover signup/login, ownership isolation, logout revocation, session expiration, CSRF rejection, login attempt limits, task validation, file persistence, and Vercel initialization. MongoDB requires a real connection for integration verification.
 
 ## Presentation walkthrough
 
-1. Explain React renders the interface, Express handles HTTP requests, and MongoDB stores tasks (when configured).
+1. Create an app account. Explain React renders the interface, Express handles authenticated HTTP requests, and MongoDB stores users, sessions, and tasks (when configured).
 2. Add “Prepare internship presentation” with a due date and priority.
 3. Edit the description, search for it, and mark it complete.
 4. Show the summary cards and Completed filter updating.
 5. Refresh to demonstrate persistence, then delete the task using the confirmation dialog.
 
-See `IMPLEMENTATION_PLAN.md` for the design and scope. This is a single-user local demonstration without authentication.
+6. Log out and create another account to show that its task list is separate.
+
+See `IMPLEMENTATION_PLAN.md` for the design and scope.

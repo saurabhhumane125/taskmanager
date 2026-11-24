@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CalendarDays, Check, CheckCheck, Circle, ClipboardList, Clock3, LayoutGrid, ListTodo, LoaderCircle, Menu, Pencil, Plus, Search, Sprout, Trash2, X } from 'lucide-react';
+import { CalendarDays, Check, CheckCheck, Circle, ClipboardList, Clock3, LayoutGrid, ListTodo, LoaderCircle, LogOut, Menu, Pencil, Plus, Search, Sprout, Trash2, X } from 'lucide-react';
+import Auth from './Auth';
+import { api } from './api';
 import './styles.css';
+import './auth.css';
 
 const blank = { title: '', description: '', dueDate: '', priority: 'Medium' };
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const dateLabel = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No due date';
-async function api(path, options) {
-  const response = await fetch(`/api${path}`, { ...options, headers: { 'Content-Type': 'application/json' } });
-  if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || 'Could not connect to the server. Please try again.'); }
-  return response.status === 204 ? null : response.json();
-}
-function App() {
+function App({ user, onLogout }) {
+  const [loggingOut, setLoggingOut] = useState(false);
+  async function logout() { setLoggingOut(true); try { await onLogout(); } catch (err) { setError(err.message); setLoggingOut(false); } }
   const [tasks, setTasks] = useState([]), [filter, setFilter] = useState('All tasks'), [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [modal, setModal] = useState(null), [form, setForm] = useState(blank);
   const [busy, setBusy] = useState(false), [pending, setPending] = useState(new Set()), [sort, setSort] = useState('newest'), [menu, setMenu] = useState(false), [mode, setMode] = useState('');
@@ -61,7 +61,7 @@ function App() {
       <div className="workspace"><span className="workspace-avatar">P</span><div>Personal workspace<small>A little more organized.</small></div><span className="workspace-dot"/></div>
       <p className="nav-label">WORKSPACE</p>
       <nav aria-label="Task views">{[['All tasks',LayoutGrid,tasks.length],['Active',Circle,active],['Completed',CheckCheck,completed],['Due today',CalendarDays,due]].map(([name,Icon,count]) => <button key={name} className={`nav-item ${filter === name ? 'selected' : ''}`} onClick={() => { setFilter(name); setMenu(false); }}><Icon size={19}/><span>{name}</span><span className="nav-count">{count}</span></button>)}</nav>
-      <div className="sidebar-bottom"><div className="growth"><Sprout size={27}/><h3>Small steps. Big progress.</h3><p>Make a little room for what matters. One task at a time.</p><div className="growth-line"><span style={{ width: `${tasks.length ? completed / tasks.length * 100 : 0}%` }}/></div><small>{completed} of {tasks.length} tasks completed</small></div><div className="profile"><span className="profile-avatar">ME</span><div>My workspace<small>Personal task manager</small></div></div></div>
+      <div className="sidebar-bottom"><div className="growth"><Sprout size={27}/><h3>Small steps. Big progress.</h3><p>Make a little room for what matters. One task at a time.</p><div className="growth-line"><span style={{ width: `${tasks.length ? completed / tasks.length * 100 : 0}%` }}/></div><small>{completed} of {tasks.length} tasks completed</small></div><div className="profile"><span className="profile-avatar">{user.name.slice(0,2).toUpperCase()}</span><div className="profile-details">{user.name}<small title={user.email}>{user.email}</small></div><button className="icon-button logout-button" onClick={logout} disabled={loggingOut} aria-label="Log out" title="Log out">{loggingOut ? <LoaderCircle size={18} className="spin"/> : <LogOut size={18}/>}</button></div></div>
     </aside>
     {menu && <button className="sidebar-shade" aria-label="Close menu" onClick={() => setMenu(false)}/>}
     <div className="main-wrap"><header className="topbar"><div className="breadcrumb"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMenu(!menu)}><Menu size={21}/></button><span>Workspace</span><span className="slash">/</span><strong>{filter}</strong></div><span className="top-date"><CalendarDays size={16}/>{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span></header>
@@ -77,4 +77,4 @@ function App() {
     {modal && <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget && !busy) setModal(null); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" ref={dialog}><div className="modal-heading"><div><div className="eyebrow">YOUR PERSONAL WORKSPACE</div><h2 id="modal-title">{modal.type === 'delete' ? 'Delete this task?' : modal.task ? 'A little fine-tuning.' : 'Make room for what’s next.'}</h2></div><button className="icon-button" disabled={busy} aria-label="Close dialog" onClick={() => setModal(null)}><X size={21}/></button></div>{error && <p className="error" role="alert">{error}</p>}{modal.type === 'delete' ? <><p className="delete-copy">“{modal.task.title}” will be permanently removed.</p><div className="modal-buttons"><button className="secondary" disabled={busy} onClick={() => setModal(null)}>Keep task</button><button className="danger" disabled={busy} onClick={remove}>{busy ? 'Deleting…' : 'Delete task'}</button></div></> : <form onSubmit={save}><label>Task title <span>*</span><input autoFocus required maxLength={120} placeholder="What would you like to get done?" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}/></label><label>Description <small>(optional)</small><textarea maxLength={1000} rows={3} placeholder="A few details to keep you on track…" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}/></label><div className="form-grid"><label>Due date<input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })}/></label><label>Priority<select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>{['Low','Medium','High'].map(p => <option key={p}>{p}</option>)}</select></label></div><div className="modal-buttons"><button type="button" className="secondary" disabled={busy} onClick={() => setModal(null)}>Cancel</button><button className="primary" disabled={busy || !form.title.trim()}>{busy ? <LoaderCircle size={17} className="spin"/> : <Plus size={17}/ >}{busy ? 'Saving…' : modal.task ? 'Save changes' : 'Create task'}</button></div></form>}</section></div>}
   </div>;
 }
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById('root')).render(<Auth>{(user, logout) => <App key={user.id} user={user} onLogout={logout}/>}</Auth>);
