@@ -54,7 +54,7 @@ The repository includes `api/index.js` for the Express API and `vercel.json` to 
 
 1. Create a free MongoDB Atlas cluster at https://www.mongodb.com/cloud/atlas/register.
 2. Create a database user with access to the `taskflow` database. This is separate from your Atlas website login.
-3. Add the deployment's outbound IP addresses to the Atlas project IP access list. See your Vercel project's networking settings for its outbound ranges. Add your own IP too if you want to connect Compass from your laptop.
+3. Configure Atlas **Network Access**. Vercel uses dynamic outbound IPs by default; for this demo, allow `0.0.0.0/0` and use a dedicated database user with a strong password. This permits network connection attempts from any IP; database authentication still applies. If your Vercel plan has static outbound IPs configured, allow only those addresses instead.
 4. In Atlas, choose **Connect → Drivers → Node.js** and copy the connection string. Set the database name to `taskflow`; substitute the database user's password, URL-encoding special characters.
 5. In Vercel, open this project → **Settings → Environment Variables**. Add `MONGODB_URI` with the Atlas connection string and enable it for Production (and Preview if needed). Store credentials there, never in GitHub or frontend variables.
 6. Use the repository root as Root Directory, Vite as framework, `npm run build` as Build Command, and `dist` as Output Directory. Vercel runs the API function automatically; do not configure `npm start` as a build command.
@@ -65,7 +65,7 @@ Local MongoDB data is separate from Atlas and is not uploaded automatically. In 
 
 Troubleshooting: a 404 on `/api/health` means the deployed commit is missing the API function/routing configuration. A 503 with a database configuration message means `MONGODB_URI` is missing. A connection failure means the Atlas URI, database user credentials, or IP access list needs checking. A `mongodb://127.0.0.1:27017/...` URI works only on your laptop.
 
-References: [Vercel Node.js functions](https://vercel.com/docs/functions/runtimes/node-js), [Atlas free cluster setup](https://www.mongodb.com/docs/atlas/tutorial/deploy-free-tier-cluster/).
+References: [Vercel Node.js functions](https://vercel.com/docs/functions/runtimes/node-js), [Atlas free cluster setup](https://www.mongodb.com/docs/atlas/tutorial/deploy-free-tier-cluster/), [Atlas and Vercel network access](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel/).
 
 ### Run the production build locally
 
